@@ -126,6 +126,14 @@
   users.groups.i2c = { };
   users.groups.gpio = { };
 
+  # Mount the FAT firmware partition at /boot so the activation script can
+  # read piframe-config.json placed there before first insert.
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/FIRMWARE";
+    fsType = "vfat";
+    options = [ "nofail" "umask=0077" ];
+  };
+
   # NTP for when online (RTC fills the gap when offline)
   services.timesyncd.enable = true;
 }
