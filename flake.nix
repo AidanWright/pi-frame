@@ -45,6 +45,7 @@
             # Nix tooling
             nil
             nixpkgs-fmt
+            cachix
             # Utilities
             jq
             curl

@@ -1,11 +1,16 @@
 { pkgs, lib, ... }:
 
 {
+  # nixos-hardware sets the RPi-fork kernel; override with mainline which has
+  # stable upstream hashes and full BCM2837 support.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   # Not using ZFS; silence the forceImportRoot default-value warning
   boot.zfs.forceImportRoot = false;
 
   # Minimize GPU memory allocation (16 MB)
   sdImage.populateFirmwareCommands = lib.mkAfter ''
+    chmod u+w firmware/config.txt
     echo "gpu_mem=16" >> firmware/config.txt
   '';
   zramSwap = {

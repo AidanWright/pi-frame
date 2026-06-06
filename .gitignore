@@ -17,5 +17,8 @@ dist/
 build/
 .venv/
 
+# MacOS
+.DS_Store
+
 # Dev data
 dev/data/

@@ -17,20 +17,28 @@
   time.timeZone = "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # SSH for debugging (key-only auth)
   services.openssh = {
     enable = true;
     settings = {
-      PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
+      PasswordAuthentication = true;
+      PermitRootLogin = "no";
     };
   };
+
+  users.users.frame = {
+    isNormalUser = true;
+    # initialPassword is stored in the Nix store — fine for a home device,
+    # change it after first boot if the Pi is ever internet-accessible.
+    initialPassword = "frame";
+    extraGroups = [ "wheel" ];
+  };
+
+  security.sudo.wheelNeedsPassword = false;
 
   # Minimal package set
   environment.systemPackages = with pkgs; [
     vim
     htop
-    git
     jq
     curl
     piframePkg
