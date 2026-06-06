@@ -1,6 +1,3 @@
-"""
-DS3231 RTC utilities: sync system clock and schedule wake alarms.
-"""
 import logging
 import subprocess
 from datetime import datetime, timedelta
@@ -11,7 +8,6 @@ RTC_DEVICE = "/dev/rtc0"
 
 
 def sync_from_rtc() -> None:
-    """Sync system clock from hardware RTC (DS3231)."""
     try:
         subprocess.run(["hwclock", "--hctosys", "--utc", "--verbose"], check=True)
         logger.info("System clock synced from RTC")
@@ -22,11 +18,6 @@ def sync_from_rtc() -> None:
 
 
 def set_daily_wake(hour: int = 8, minute: int = 0) -> bool:
-    """
-    Set DS3231 alarm to wake the Pi at the next occurrence of hour:minute.
-    Suspends the system to RAM via rtcwake.
-    Returns True if the command was invoked, False if rtc0 is not available.
-    """
     if not _rtc_available():
         logger.info("No RTC device at %s; skipping rtcwake", RTC_DEVICE)
         return False

@@ -1,6 +1,3 @@
-"""
-Main entry point for the piframe systemd service.
-"""
 import logging
 import socket
 import sys
@@ -24,10 +21,10 @@ def _is_online() -> bool:
 
 
 def refresh(payload: dict | None = None) -> None:
-    """Fetch and display the current daily image (or a pushed one)."""
     from piframe.battery import read_battery
     from piframe.client import fetch_daily_image
-    from piframe.display.renderer import get_display, render_image, render_status
+    from piframe.display.hardware import get_display
+    from piframe.display.renderer import render_image, render_status
 
     display = get_display()
     display.init()
@@ -61,20 +58,16 @@ def main() -> None:
 
     if not _is_online():
         logger.warning("No internet connection; skipping image fetch")
-        from piframe.display.renderer import get_display, render_status
+        from piframe.display.hardware import get_display
+        from piframe.display.renderer import render_status
         display = get_display()
         display.init()
         render_status("No internet connection", None, display)
         display.sleep()
         sys.exit(1)
 
-    # Start push listener (daemon thread; stays alive while main runs)
     start_listener(refresh_fn=refresh)
-
-    # Fetch and display today's image
     refresh()
-
-    # Sleep until tomorrow's update time
     set_daily_wake(hour=8)
 
 

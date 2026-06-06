@@ -4,15 +4,8 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from piframe.display.renderer import (
-    FakeDisplay,
-    EPD_WIDTH,
-    EPD_HEIGHT,
-    render_image,
-    render_setup_screen,
-    render_status,
-    _ACEP_PALETTE,
-)
+from piframe.display.hardware import FakeDisplay, EPD_WIDTH, EPD_HEIGHT, _ACEP_PALETTE
+from piframe.display.renderer import render_image, render_setup_screen, render_status
 
 
 def _make_image(w=800, h=480, color=(128, 64, 200)):
@@ -29,7 +22,6 @@ def test_getbuffer_correct_size():
     display = FakeDisplay()
     img = _make_image()
     buf = display.getbuffer(img)
-    # 2 pixels per byte
     assert len(buf) == EPD_WIDTH * EPD_HEIGHT // 2
 
 
@@ -38,7 +30,6 @@ def test_getbuffer_only_palette_colors():
     img = _make_image()
     display.getbuffer(img)
     assert display.last_image is not None
-    # Unique pixel values must be a subset of valid palette indices
     pixels = set(display.last_image.tobytes())
     valid_indices = set(range(len(_ACEP_PALETTE)))
     assert pixels.issubset(valid_indices)

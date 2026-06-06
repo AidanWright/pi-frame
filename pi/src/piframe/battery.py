@@ -1,6 +1,3 @@
-"""
-INA219 battery monitor on I2C address 0x40.
-"""
 import logging
 from typing import Optional
 
@@ -9,17 +6,11 @@ logger = logging.getLogger(__name__)
 INA219_ADDR = 0x40
 I2C_BUS = 1
 
-# LiPo voltage range for SoC estimation
 _VMIN = 3.0
 _VMAX = 4.2
 
 
 def read_battery() -> dict:
-    """
-    Read voltage and current from INA219.
-    Returns dict with keys: voltage_v, current_ma, soc_pct.
-    Returns empty dict on error (no battery connected, no I2C, etc.).
-    """
     try:
         import smbus2
         bus = smbus2.SMBus(I2C_BUS)
@@ -38,7 +29,6 @@ def read_battery() -> dict:
     }
 
 
-# INA219 register addresses
 _REG_BUS_VOLTAGE = 0x02
 _REG_CURRENT = 0x04
 _REG_CALIBRATION = 0x05
@@ -50,13 +40,11 @@ _CURRENT_LSB = 0.0001  # 0.1 mA/bit
 
 def _read_bus_voltage(bus) -> float:
     raw = bus.read_word_data(INA219_ADDR, _REG_BUS_VOLTAGE)
-    # INA219 returns big-endian; swap bytes
-    raw = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
+    raw = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)  # INA219 returns big-endian
     return ((raw >> 3) * 4) / 1000.0  # 4 mV/bit
 
 
 def _read_current(bus) -> float:
-    # Write calibration first
     cal = _CALIBRATION_VALUE
     cal_be = ((cal & 0xFF) << 8) | ((cal >> 8) & 0xFF)
     bus.write_word_data(INA219_ADDR, _REG_CALIBRATION, cal_be)

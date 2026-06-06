@@ -128,3 +128,13 @@ On wake, the DS3231 restores the system clock before NTP syncs.
 - One-line messages only
 - Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): description`
 - Never include co-author or author attribution lines
+
+## Code style
+
+- Each file does one thing. Split files that mix unrelated concerns.
+- Functions abstract away implementation details; callers should not need to know internals.
+- Comments explain WHY, never WHAT. If you need a comment to explain what code does, refactor the code to be self-explanatory instead.
+- No module-level docstrings — the filename conveys the same information.
+- No function docstrings that just restate the function name or describe what the code does.
+- Acceptable comments: hardware constraints, non-obvious invariants, workarounds for specific bugs, or tradeoffs that would surprise a reader.
+- Frontend: HTML, CSS, and JS must live in separate files. Inline a few lines of one when truly necessary, but not entire stylesheets or scripts.

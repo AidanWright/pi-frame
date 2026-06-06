@@ -1,7 +1,3 @@
-"""
-Tailscale-facing HTTP listener.
-Allows the server to push a refresh trigger to the Pi at any time.
-"""
 import logging
 import subprocess
 import threading
@@ -15,7 +11,7 @@ _refresh_callback: Optional[Callable] = None
 
 
 def get_tailscale_ip() -> str:
-    """Return the Tailscale IPv4 address, or '0.0.0.0' if Tailscale is not running."""
+    """Falls back to 0.0.0.0 (all interfaces) if Tailscale is not running."""
     try:
         result = subprocess.run(
             ["tailscale", "ip", "-4"],
@@ -86,7 +82,6 @@ def run() -> None:
 
 
 def start_listener(refresh_fn: Callable, port: int = 8080) -> threading.Thread:
-    """Start the listener Flask app in a daemon thread and return the thread."""
     app = create_listener_app(refresh_fn)
     host = get_tailscale_ip()
 

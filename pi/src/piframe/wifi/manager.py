@@ -1,8 +1,3 @@
-"""
-WiFi manager: scan → try known networks → fall back to AP captive portal.
-
-All subprocess calls are factored into small functions so tests can mock them easily.
-"""
 import json
 import logging
 import os
@@ -17,17 +12,13 @@ logger = logging.getLogger(__name__)
 NETWORKS_FILE = Path(os.environ.get("PIFRAME_NETWORKS_FILE", "/var/lib/piframe/networks.json"))
 AP_SSID = "PiFrame-Setup"
 
-# Set by save_network(); cleared before entering AP mode so run() knows new creds arrived.
+# Cleared before entering AP mode so run() can detect when the portal saves new credentials.
 _new_creds_event = threading.Event()
 AP_IP = "192.168.4.1"
 DHCP_RANGE = "192.168.4.2,192.168.4.20,24h"
 PORTAL_PORT = 80
-CONNECT_TIMEOUT = 30  # seconds to wait for DHCP after wpa_supplicant start
+CONNECT_TIMEOUT = 30
 
-
-# ---------------------------------------------------------------------------
-# Low-level helpers (easy to mock in tests)
-# ---------------------------------------------------------------------------
 
 def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, **kwargs)
@@ -68,7 +59,6 @@ def load_known_networks() -> list[dict]:
 
 def save_network(ssid: str, psk: str) -> None:
     networks = load_known_networks()
-    # Update existing entry or append
     for net in networks:
         if net.get("ssid") == ssid:
             net["psk"] = psk
@@ -100,12 +90,10 @@ def _has_ip(interface: str = "wlan0") -> bool:
 
 
 def try_connect(ssid: str, psk: str, timeout: int = CONNECT_TIMEOUT) -> bool:
-    """Write a wpa_supplicant config, start it, wait for a DHCP address."""
     with tempfile.NamedTemporaryFile(suffix=".conf", delete=False, mode="w") as f:
         conf_path = f.name
     _write_wpa_conf(ssid, psk, conf_path)
 
-    # Kill any existing wpa_supplicant
     _run(["pkill", "-x", "wpa_supplicant"], capture_output=True)
     time.sleep(0.5)
 
@@ -119,18 +107,12 @@ def try_connect(ssid: str, psk: str, timeout: int = CONNECT_TIMEOUT) -> bool:
     while time.monotonic() < deadline:
         time.sleep(2)
         if _has_ip():
-            # Bring up DHCP client if not already running
             _run(["dhcpcd", "wlan0"], capture_output=True)
             return True
 
-    # Timed out
     _run(["pkill", "-x", "wpa_supplicant"], capture_output=True)
     return False
 
-
-# ---------------------------------------------------------------------------
-# AP mode
-# ---------------------------------------------------------------------------
 
 _hostapd_proc: subprocess.Popen | None = None
 _dnsmasq_proc: subprocess.Popen | None = None
@@ -154,12 +136,10 @@ ignore_broadcast_ssid=0
 def enable_ap_mode() -> None:
     global _hostapd_proc, _dnsmasq_proc, _portal_thread
 
-    # Kill client-mode networking
     _run(["pkill", "-x", "wpa_supplicant"], capture_output=True)
     _run(["pkill", "-x", "dhcpcd"], capture_output=True)
     time.sleep(0.5)
 
-    # Set static IP
     _run(["ip", "addr", "flush", "dev", "wlan0"], capture_output=True)
     _run(["ip", "addr", "add", f"{AP_IP}/24", "dev", "wlan0"], capture_output=True)
     _run(["ip", "link", "set", "wlan0", "up"], capture_output=True)
@@ -186,7 +166,6 @@ def enable_ap_mode() -> None:
         stderr=subprocess.DEVNULL,
     )
 
-    # Start captive portal in background thread
     from piframe.wifi.portal import create_portal_app
     flask_app = create_portal_app()
 
@@ -210,21 +189,11 @@ def disable_ap_mode() -> None:
     _run(["ip", "addr", "flush", "dev", "wlan0"], capture_output=True)
 
 
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
-
 def run(on_ap_mode_started=None) -> None:
-    """
-    Continuously try to connect to a known WiFi network.
-    Falls back to AP captive portal when no known network is visible or all fail.
-    Blocks until a working connection is established.
-    """
     while True:
         visible = scan_visible_ssids()
         known = load_known_networks()
 
-        # Find known networks that are currently visible, sorted by signal (strongest first)
         matches = [n for n in known if n["ssid"] in visible]
         matches.sort(key=lambda n: visible.get(n["ssid"], -100), reverse=True)
 
@@ -234,15 +203,12 @@ def run(on_ap_mode_started=None) -> None:
                 logger.info("Connected to %s", net["ssid"])
                 return
 
-        # No known network worked — start AP provisioning
         logger.info("No known networks available; starting provisioning AP")
         _new_creds_event.clear()
         enable_ap_mode()
         if on_ap_mode_started:
             on_ap_mode_started()
 
-        # Block until the captive portal saves new credentials
         _new_creds_event.wait()
 
         disable_ap_mode()
-        # Loop back to try the newly added network

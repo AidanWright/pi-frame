@@ -55,7 +55,6 @@ def list_images(db: Session = Depends(get_db)) -> list[ImageOut]:
 @router.post("/api/images", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_api_key)])
 def upload_image(file: UploadFile, db: Session = Depends(get_db)) -> ImageOut:
     data = file.file.read()
-    # Validate it's a real image
     try:
         PilImage.open(io.BytesIO(data)).verify()
     except Exception:
@@ -101,7 +100,6 @@ def push_to_pi(body: PushRequest, db: Session = Depends(get_db)):
 
     pi_url = f"http://pi-frame.{tailnet}:8080"
 
-    # Verify Pi is reachable
     try:
         r = httpx.get(f"{pi_url}/health", timeout=5)
         r.raise_for_status()
