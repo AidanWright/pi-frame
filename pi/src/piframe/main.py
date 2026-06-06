@@ -38,6 +38,9 @@ def refresh(payload: dict | None = None) -> None:
     try:
         if payload and "image_path" in payload:
             img_path = Path(payload["image_path"])
+        elif payload and "image_id" in payload:
+            from piframe.client import fetch_image_by_id
+            img_path = fetch_image_by_id(payload["image_id"])
         else:
             img_path = fetch_daily_image()
 

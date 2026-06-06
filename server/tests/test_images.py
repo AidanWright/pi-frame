@@ -1,5 +1,5 @@
 import io
-from datetime import date, timedelta
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,7 +30,6 @@ def test_upload_returns_201(client):
     body = r.json()
     assert body["original_name"] == "photo.jpg"
     assert body["mime_type"] == "image/jpeg"
-    assert body["scheduled_date"] is None
 
 
 def test_upload_invalid_file(client):
@@ -62,34 +61,34 @@ def test_daily_no_images_returns_404(client):
     assert r.status_code == 404
 
 
-def test_daily_returns_most_recent(client):
-    _upload(client, name="old.jpg")
-    _upload(client, name="new.jpg")
+def test_daily_returns_an_image(client):
+    _upload(client, name="a.jpg")
+    _upload(client, name="b.jpg")
     r = client.get("/api/images/daily")
     assert r.status_code == 200
-    assert r.headers["content-disposition"].endswith('filename="new.jpg"')
 
 
-def test_daily_prefers_scheduled_today(client):
-    r1 = _upload(client, name="unscheduled.jpg")
-    r2 = _upload(client, name="today.jpg")
-    img_id = r2.json()["id"]
-
-    today = date.today().isoformat()
-    client.post(f"/api/images/{img_id}/schedule", json={"scheduled_date": today}, headers=HEADERS)
-
-    r = client.get("/api/images/daily")
-    assert r.status_code == 200
-    assert r.headers["content-disposition"].endswith('filename="today.jpg"')
+def test_daily_is_stable_within_day(client):
+    _upload(client, name="a.jpg")
+    _upload(client, name="b.jpg")
+    r1 = client.get("/api/images/daily")
+    r2 = client.get("/api/images/daily")
+    assert r1.headers["content-disposition"] == r2.headers["content-disposition"]
 
 
-def test_schedule_and_get(client):
-    r = _upload(client)
-    img_id = r.json()["id"]
-    future = (date.today() + timedelta(days=5)).isoformat()
-    r2 = client.post(f"/api/images/{img_id}/schedule", json={"scheduled_date": future}, headers=HEADERS)
+def test_daily_varies_by_date(client):
+    for i in range(10):
+        _upload(client, name=f"{i}.jpg")
+
+    with patch("piframe_server.routes.images.date") as mock_date:
+        mock_date.today.return_value = date(2024, 1, 1)
+        r1 = client.get("/api/images/daily")
+        mock_date.today.return_value = date(2024, 1, 2)
+        r2 = client.get("/api/images/daily")
+
+    assert r1.status_code == 200
     assert r2.status_code == 200
-    assert r2.json()["scheduled_date"] == future
+    assert r1.headers["content-disposition"] != r2.headers["content-disposition"]
 
 
 def test_delete(client):

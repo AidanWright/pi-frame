@@ -1,3 +1,4 @@
+import hashlib
 import io
 import mimetypes
 import os
@@ -12,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from piframe_server.auth import require_api_key
-from piframe_server.models import Image, ImageOut, PushRequest, ScheduleRequest
+from piframe_server.models import Image, ImageOut, PushRequest
 from piframe_server.storage import delete_image, get_image_path, save_upload
 
 router = APIRouter()
@@ -29,13 +30,11 @@ def get_db():
 
 
 def _daily_image(db: Session) -> Optional[Image]:
-    today = date.today()
-    # Prefer an image explicitly scheduled for today
-    row = db.execute(select(Image).where(Image.scheduled_date == today)).scalar_one_or_none()
-    if row:
-        return row
-    # Fall back to the most recently uploaded image
-    return db.execute(select(Image).order_by(Image.upload_date.desc(), Image.id.desc())).scalars().first()
+    rows = db.execute(select(Image).order_by(Image.id)).scalars().all()
+    if not rows:
+        return None
+    seed = int(hashlib.sha256(date.today().isoformat().encode()).hexdigest(), 16)
+    return rows[seed % len(rows)]
 
 
 @router.get("/api/images/daily")
@@ -82,17 +81,6 @@ def get_image(image_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     path = get_image_path(row.filename)
     return FileResponse(path, media_type=row.mime_type, filename=row.original_name)
-
-
-@router.post("/api/images/{image_id}/schedule", dependencies=[Depends(require_api_key)])
-def schedule_image(image_id: int, body: ScheduleRequest, db: Session = Depends(get_db)) -> ImageOut:
-    row = db.get(Image, image_id)
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    row.scheduled_date = body.scheduled_date
-    db.commit()
-    db.refresh(row)
-    return ImageOut.model_validate(row)
 
 
 @router.delete("/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_api_key)])

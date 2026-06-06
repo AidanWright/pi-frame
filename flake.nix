@@ -30,17 +30,18 @@
         devShells.default = pkgs.mkShell {
           name = "pi-frame-dev";
           buildInputs = with pkgs; [
-            # Python dev
-            python312
-            python312Packages.pip
-            python312Packages.pytest
-            python312Packages.pillow
-            python312Packages.flask
-            python312Packages.httpx
-            python312Packages.fastapi
-            python312Packages.uvicorn
-            python312Packages.sqlalchemy
-            python312Packages.python-multipart
+            # Python with all dev/test dependencies in one environment
+            (python312.withPackages (ps: with ps; [
+              pytest
+              pillow
+              flask
+              httpx
+              fastapi
+              uvicorn
+              sqlalchemy
+              python-multipart
+              qrcode
+            ]))
             # Nix tooling
             nil
             nixpkgs-fmt

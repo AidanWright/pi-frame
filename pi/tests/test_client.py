@@ -64,6 +64,31 @@ def test_fetch_daily_image_success(piframe_env):
     assert call_args[1]["headers"]["X-API-Key"] == "my-api-key"
 
 
+def test_fetch_image_by_id_success(piframe_env):
+    etc, cache, fake_path = piframe_env
+    jpeg = _jpeg_bytes()
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.content = jpeg
+    mock_response.headers = {"content-type": "image/jpeg"}
+
+    mock_client = MagicMock()
+    mock_client.__enter__ = MagicMock(return_value=mock_client)
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.get = MagicMock(return_value=mock_response)
+
+    with patch("piframe.client.Path", side_effect=fake_path), \
+         patch("piframe.client.httpx.Client", return_value=mock_client):
+        result = client_mod.fetch_image_by_id(42)
+
+    assert result.exists()
+    assert result.read_bytes() == jpeg
+    call_args = mock_client.get.call_args
+    assert "/api/images/42" in call_args[0][0]
+    assert call_args[1]["headers"]["X-API-Key"] == "my-api-key"
+
+
 def test_fetch_daily_image_http_error(piframe_env):
     import httpx
     _, _, fake_path = piframe_env

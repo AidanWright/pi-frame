@@ -122,3 +122,9 @@ The DS3231 RTC provides timekeeping without internet. After displaying an image,
 2. Suspends to RAM via `rtcwake`
 
 On wake, the DS3231 restores the system clock before NTP syncs.
+
+## Git commit convention
+
+- One-line messages only
+- Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): description`
+- Never include co-author or author attribution lines

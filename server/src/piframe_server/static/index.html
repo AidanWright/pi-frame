@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pi-frame</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #222;
+      --border: #2e2e2e;
+      --text: #e0e0e0;
+      --muted: #888;
+      --accent: #4f8ef7;
+      --danger: #e05252;
+      --success: #52c05a;
+      --warning: #e0a952;
+      --r: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      gap: 1rem;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.625rem; }
+    h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .dot.online  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.offline { background: var(--muted); }
+
+    .key-form { display: flex; gap: 0.5rem; align-items: center; }
+    .key-form label { color: var(--muted); white-space: nowrap; }
+    input[type="password"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.625rem;
+      border-radius: var(--r);
+      font-size: 0.8rem;
+      width: 180px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="password"]:focus { border-color: var(--accent); }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none; cursor: pointer; border-radius: var(--r);
+      font-size: 0.8rem; font-weight: 500; padding: 0.4rem 0.875rem;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.85; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-danger   { background: var(--danger); color: #fff; }
+    .btn-neutral  { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-push     { background: #1d5c3e; color: #a8e6c0; border: 1px solid #2d7a53; }
+    .btn-sm { padding: 0.3rem 0.625rem; font-size: 0.75rem; }
+
+    /* ── Main layout ── */
+    main { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      margin-bottom: 1rem;
+    }
+    .upload-zone:hover, .upload-zone.over {
+      border-color: var(--accent);
+      background: rgba(79,142,247,0.04);
+      color: var(--text);
+    }
+    .upload-zone p { margin: 0; line-height: 1.6; }
+    .upload-zone .browse { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+    .upload-progress { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1rem; }
+    .prog-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.35rem 0.75rem; border-radius: var(--r);
+      font-size: 0.8rem; background: var(--surface);
+      animation: fadein 0.2s ease;
+    }
+    .prog-item.ok   { background: rgba(82,192,90,0.12); color: var(--success); }
+    .prog-item.err  { background: rgba(224,82,82,0.12); color: var(--danger); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.25rem; flex-wrap: wrap;
+    }
+    .toolbar-right { margin-left: auto; color: var(--muted); font-size: 0.8rem; }
+
+    /* ── Gallery ── */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 0.875rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex; flex-direction: column;
+    }
+    .card:hover { border-color: #444; transform: translateY(-1px); }
+
+    .thumb {
+      width: 100%; aspect-ratio: 4/3;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+    }
+    .thumb img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: opacity 0.3s;
+    }
+    .thumb .placeholder { color: var(--muted); font-size: 0.75rem; }
+
+    /* "today" badge */
+    .thumb .badge {
+      position: absolute; top: 6px; right: 6px;
+      background: var(--accent); color: #fff;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .card-body { padding: 0.5rem 0.625rem; flex: 1; }
+    .card-name {
+      font-size: 0.78rem; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-date { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    .card-actions {
+      display: flex; gap: 0.375rem; padding: 0.5rem 0.625rem;
+      border-top: 1px solid var(--border);
+    }
+    .card-actions .btn { flex: 1; text-align: center; }
+
+    /* ── Empty / error states ── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center; color: var(--muted);
+      padding: 4rem 1rem;
+    }
+    .empty p { margin: 0; }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      z-index: 100; pointer-events: none;
+    }
+    .toast {
+      padding: 0.625rem 1rem;
+      border-radius: var(--r);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: auto;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.ok  { border-color: var(--success); color: var(--success); }
+    .toast.err { border-color: var(--danger);  color: var(--danger);  }
+    .toast.warn { border-color: var(--warning); color: var(--warning); }
+
+    @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header { flex-wrap: wrap; }
+      .key-form label { display: none; }
+      input[type="password"] { width: 140px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>pi-frame</h1>
+    <div id="dot" class="dot offline" title="API connection status"></div>
+  </div>
+  <form class="key-form" onsubmit="connectWithKey(event)">
+    <label for="key-input">API key</label>
+    <input type="password" id="key-input" placeholder="Enter key…" autocomplete="current-password">
+    <button type="submit" class="btn btn-primary">Connect</button>
+  </form>
+</header>
+
+<main>
+  <div id="upload-zone" class="upload-zone">
+    <p>Drop images here or <span class="browse" id="browse-trigger">browse files</span></p>
+    <p style="font-size:0.75rem;margin-top:0.25rem">JPEG, PNG, WebP, GIF accepted</p>
+  </div>
+  <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+
+  <div id="progress" class="upload-progress"></div>
+
+  <div class="toolbar">
+    <button class="btn btn-push" id="push-daily-btn" onclick="pushToFrame(null)">
+      Push today's image to frame
+    </button>
+    <span class="toolbar-right" id="img-count"></span>
+  </div>
+
+  <div class="gallery" id="gallery">
+    <div class="empty"><p>Enter your API key above to get started.</p></div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script>
+'use strict';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let apiKey = localStorage.getItem('pf-key') || '';
+const blobCache = new Map(); // id → objectURL
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (apiKey) {
+    document.getElementById('key-input').value = apiKey;
+    loadImages();
+  }
+  setupUpload();
+});
+
+// ── API key ───────────────────────────────────────────────────────────────────
+function connectWithKey(e) {
+  e.preventDefault();
+  apiKey = document.getElementById('key-input').value.trim();
+  localStorage.setItem('pf-key', apiKey);
+  loadImages();
+}
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+function authHeaders(extra = {}) {
+  return { 'X-API-Key': apiKey, ...extra };
+}
+
+async function apiFetch(path, opts = {}) {
+  const resp = await fetch(path, {
+    ...opts,
+    headers: { ...authHeaders(), ...(opts.headers || {}) },
+  });
+  return resp;
+}
+
+// ── Load & render gallery ─────────────────────────────────────────────────────
+async function loadImages() {
+  try {
+    const resp = await apiFetch('/api/images');
+    if (resp.status === 401) { setOnline(false); toast('Invalid API key', 'err'); return; }
+    if (!resp.ok) throw new Error(resp.status);
+    const images = await resp.json();
+    setOnline(true);
+    renderGallery(images);
+  } catch (e) {
+    setOnline(false);
+    toast(`Failed to load images: ${e.message}`, 'err');
+  }
+}
+
+function renderGallery(images) {
+  const gallery = document.getElementById('gallery');
+  document.getElementById('img-count').textContent =
+    images.length === 0 ? '' : `${images.length} image${images.length === 1 ? '' : 's'}`;
+
+  // Revoke blobs for deleted images
+  const ids = new Set(images.map(i => i.id));
+  for (const [id, url] of blobCache) {
+    if (!ids.has(id)) { URL.revokeObjectURL(url); blobCache.delete(id); }
+  }
+
+  gallery.innerHTML = '';
+
+  if (images.length === 0) {
+    gallery.innerHTML = '<div class="empty"><p>No images yet — upload one above.</p></div>';
+    return;
+  }
+
+  // Determine today's daily pick (mirror server logic: sha256(date) % count)
+  const todayIdx = dailyIndex(images.length);
+
+  images.forEach((img, idx) => {
+    const isToday = idx === todayIdx;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = img.id;
+    card.innerHTML = `
+      <div class="thumb" data-lazy="${img.id}">
+        ${isToday ? '<span class="badge">TODAY</span>' : ''}
+        <span class="placeholder">Loading…</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name" title="${esc(img.original_name)}">${esc(img.original_name)}</div>
+        <div class="card-date">${fmtDate(img.upload_date)}</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-push btn-sm" onclick="pushToFrame(${img.id})">Push</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteImage(${img.id}, this)">Delete</button>
+      </div>
+    `;
+    gallery.appendChild(card);
+  });
+
+  // Lazy-load thumbnails via IntersectionObserver
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const id = parseInt(el.dataset.lazy);
+      observer.unobserve(el);
+      loadThumb(id, el);
+    });
+  }, { rootMargin: '200px' });
+
+  document.querySelectorAll('.thumb[data-lazy]').forEach(el => observer.observe(el));
+}
+
+async function loadThumb(id, container) {
+  if (blobCache.has(id)) { showThumb(container, blobCache.get(id)); return; }
+  try {
+    const resp = await apiFetch(`/api/images/${id}`);
+    if (!resp.ok) return;
+    const url = URL.createObjectURL(await resp.blob());
+    blobCache.set(id, url);
+    showThumb(container, url);
+  } catch (_) { /* leave placeholder */ }
+}
+
+function showThumb(container, url) {
+  const badge = container.querySelector('.badge');
+  container.innerHTML = `<img src="${url}" alt="" loading="lazy">`;
+  if (badge) container.appendChild(badge);
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteImage(id, btn) {
+  if (!confirm('Delete this image?')) return;
+  btn.disabled = true;
+  try {
+    const resp = await apiFetch(`/api/images/${id}`, { method: 'DELETE' });
+    if (resp.status === 204) {
+      if (blobCache.has(id)) { URL.revokeObjectURL(blobCache.get(id)); blobCache.delete(id); }
+      toast('Image deleted', 'ok');
+      await loadImages();
+    } else {
+      throw new Error(resp.status);
+    }
+  } catch (e) {
+    toast(`Delete failed: ${e.message}`, 'err');
+    btn.disabled = false;
+  }
+}
+
+// ── Push ──────────────────────────────────────────────────────────────────────
+async function pushToFrame(imageId) {
+  const btn = document.getElementById('push-daily-btn');
+  btn.disabled = true;
+  const body = imageId != null ? { image_id: imageId } : {};
+  try {
+    const resp = await apiFetch('/api/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok) {
+      toast(imageId ? 'Image pushed to frame' : 'Daily image pushed to frame', 'ok');
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      throw new Error(data.detail || resp.status);
+    }
+  } catch (e) {
+    toast(`Push failed: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+function setupUpload() {
+  const zone = document.getElementById('upload-zone');
+  const input = document.getElementById('file-input');
+
+  document.getElementById('browse-trigger').addEventListener('click', () => input.click());
+  zone.addEventListener('click', e => { if (e.target.id !== 'browse-trigger') input.click(); });
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('over');
+    uploadFiles(e.dataTransfer.files);
+  });
+  input.addEventListener('change', () => { uploadFiles(input.files); input.value = ''; });
+}
+
+async function uploadFiles(files) {
+  const progress = document.getElementById('progress');
+  const arr = Array.from(files);
+
+  const items = arr.map(file => {
+    const el = document.createElement('div');
+    el.className = 'prog-item';
+    el.textContent = `Uploading ${file.name}…`;
+    progress.appendChild(el);
+    return { file, el };
+  });
+
+  await Promise.all(items.map(async ({ file, el }) => {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resp = await apiFetch('/api/images', { method: 'POST', body: fd });
+      if (resp.status === 201) {
+        el.textContent = `✓ ${file.name}`;
+        el.classList.add('ok');
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data.detail || resp.status);
+      }
+    } catch (e) {
+      el.textContent = `✗ ${file.name}: ${e.message}`;
+      el.classList.add('err');
+    }
+    setTimeout(() => el.remove(), 4000);
+  }));
+
+  await loadImages();
+}
+
+// ── Daily index (mirrors server: sha256(YYYY-MM-DD) % count) ─────────────────
+// Uses a simple FNV-1a approximation since SubtleCrypto is async.
+// Only used for the "TODAY" badge — the server's result is authoritative.
+function dailyIndex(count) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  let h = 2166136261;
+  for (let i = 0; i < today.length; i++) {
+    h ^= today.charCodeAt(i);
+    h = (Math.imul(h, 16777619) >>> 0);
+  }
+  return h % count;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function setOnline(v) {
+  document.getElementById('dot').className = `dot ${v ? 'online' : 'offline'}`;
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function toast(msg, type = 'ok') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 3500);
+}
+</script>
+</body>
+</html>
