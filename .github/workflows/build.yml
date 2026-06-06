@@ -41,12 +41,12 @@ jobs:
 
       - name: Stage image file
         run: |
-          img=$(find result/ -name "*.img.zst" | head -1)
+          img=$(find result/ -name "*.img" | head -1)
           echo "Found image: $img"
-          cp "$img" pi-frame.img.zst
+          cp "$img" pi-frame.img
 
       - uses: actions/upload-artifact@v4
         with:
           name: pi-frame-sd-image
-          path: pi-frame.img.zst
+          path: pi-frame.img
           retention-days: 30
