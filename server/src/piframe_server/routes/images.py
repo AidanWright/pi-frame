@@ -12,7 +12,7 @@ from PIL import Image as PilImage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from piframe_server.auth import require_api_key
+from piframe_server.auth import require_admin, require_auth
 from piframe_server.models import Image, ImageOut, PushRequest
 from piframe_server.storage import delete_image, get_image_path, save_upload
 
@@ -46,13 +46,13 @@ def get_daily(db: Session = Depends(get_db)):
     return FileResponse(path, media_type=img.mime_type, filename=img.original_name)
 
 
-@router.get("/api/images", dependencies=[Depends(require_api_key)])
+@router.get("/api/images", dependencies=[Depends(require_auth)])
 def list_images(db: Session = Depends(get_db)) -> list[ImageOut]:
     rows = db.execute(select(Image).order_by(Image.upload_date.desc())).scalars().all()
     return [ImageOut.model_validate(r) for r in rows]
 
 
-@router.post("/api/images", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_api_key)])
+@router.post("/api/images", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin)])
 def upload_image(file: UploadFile, db: Session = Depends(get_db)) -> ImageOut:
     data = file.file.read()
     try:
@@ -73,7 +73,7 @@ def upload_image(file: UploadFile, db: Session = Depends(get_db)) -> ImageOut:
     return ImageOut.model_validate(row)
 
 
-@router.get("/api/images/{image_id}", dependencies=[Depends(require_api_key)])
+@router.get("/api/images/{image_id}", dependencies=[Depends(require_auth)])
 def get_image(image_id: int, db: Session = Depends(get_db)):
     row = db.get(Image, image_id)
     if row is None:
@@ -82,7 +82,7 @@ def get_image(image_id: int, db: Session = Depends(get_db)):
     return FileResponse(path, media_type=row.mime_type, filename=row.original_name)
 
 
-@router.delete("/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_api_key)])
+@router.delete("/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
 def delete_image_route(image_id: int, db: Session = Depends(get_db)):
     row = db.get(Image, image_id)
     if row is None:
@@ -92,7 +92,7 @@ def delete_image_route(image_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
-@router.post("/api/push", dependencies=[Depends(require_api_key)])
+@router.post("/api/push", dependencies=[Depends(require_auth)])
 def push_to_pi(body: PushRequest, db: Session = Depends(get_db)):
     tailnet = os.environ.get("TAILSCALE_TAILNET", "")
     if not tailnet:

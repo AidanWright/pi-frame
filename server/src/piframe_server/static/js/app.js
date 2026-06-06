@@ -1,39 +1,60 @@
 'use strict';
 
-let apiKey = localStorage.getItem('pf-key') || '';
+let currentRole = null;
 const blobCache = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (apiKey) {
-    document.getElementById('key-input').value = apiKey;
-    loadImages();
-  }
-  setupUpload();
+  loadImages();
 });
 
-function connectWithKey(e) {
+async function login(e) {
   e.preventDefault();
-  apiKey = document.getElementById('key-input').value.trim();
-  localStorage.setItem('pf-key', apiKey);
-  loadImages();
-}
-
-function authHeaders(extra = {}) {
-  return { 'X-API-Key': apiKey, ...extra };
-}
-
-async function apiFetch(path, opts = {}) {
-  const resp = await fetch(path, {
-    ...opts,
-    headers: { ...authHeaders(), ...(opts.headers || {}) },
+  const password = document.getElementById('login-password').value;
+  const resp = await fetch('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
   });
-  return resp;
+  if (resp.ok) {
+    const { role } = await resp.json();
+    applyRole(role);
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').textContent = '';
+    loadImages();
+  } else {
+    const data = await resp.json().catch(() => ({}));
+    document.getElementById('login-error').textContent = data.detail || 'Invalid password';
+  }
+}
+
+async function logout() {
+  await fetch('/auth/logout', { method: 'POST' });
+  applyRole(null);
+  setOnline(false);
+  document.getElementById('gallery').innerHTML = '';
+  document.getElementById('img-count').textContent = '';
+}
+
+function applyRole(role) {
+  currentRole = role;
+  const isAdmin = role === 'admin';
+  const isAuthed = role !== null;
+
+  document.getElementById('login-overlay').style.display = isAuthed ? 'none' : 'flex';
+  document.getElementById('logout-btn').style.display = isAuthed ? '' : 'none';
+  document.getElementById('upload-zone').style.display = isAdmin ? '' : 'none';
+  document.getElementById('push-daily-btn').style.display = isAuthed ? '' : 'none';
+
+  if (isAdmin) setupUpload();
 }
 
 async function loadImages() {
   try {
-    const resp = await apiFetch('/api/images');
-    if (resp.status === 401) { setOnline(false); toast('Invalid API key', 'err'); return; }
+    const resp = await fetch('/api/images');
+    if (resp.status === 401) {
+      applyRole(null);
+      return;
+    }
     if (!resp.ok) throw new Error(resp.status);
     const images = await resp.json();
     setOnline(true);
@@ -62,6 +83,7 @@ function renderGallery(images) {
   }
 
   const todayIdx = dailyIndex(images.length);
+  const isAdmin = currentRole === 'admin';
 
   images.forEach((img, idx) => {
     const isToday = idx === todayIdx;
@@ -79,7 +101,7 @@ function renderGallery(images) {
       </div>
       <div class="card-actions">
         <button class="btn btn-push btn-sm" onclick="pushToFrame(${img.id})">Push</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteImage(${img.id}, this)">Delete</button>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteImage(${img.id}, this)">Delete</button>` : ''}
       </div>
     `;
     gallery.appendChild(card);
@@ -101,7 +123,7 @@ function renderGallery(images) {
 async function loadThumb(id, container) {
   if (blobCache.has(id)) { showThumb(container, blobCache.get(id)); return; }
   try {
-    const resp = await apiFetch(`/api/images/${id}`);
+    const resp = await fetch(`/api/images/${id}`);
     if (!resp.ok) return;
     const url = URL.createObjectURL(await resp.blob());
     blobCache.set(id, url);
@@ -119,7 +141,7 @@ async function deleteImage(id, btn) {
   if (!confirm('Delete this image?')) return;
   btn.disabled = true;
   try {
-    const resp = await apiFetch(`/api/images/${id}`, { method: 'DELETE' });
+    const resp = await fetch(`/api/images/${id}`, { method: 'DELETE' });
     if (resp.status === 204) {
       if (blobCache.has(id)) { URL.revokeObjectURL(blobCache.get(id)); blobCache.delete(id); }
       toast('Image deleted', 'ok');
@@ -138,7 +160,7 @@ async function pushToFrame(imageId) {
   btn.disabled = true;
   const body = imageId != null ? { image_id: imageId } : {};
   try {
-    const resp = await apiFetch('/api/push', {
+    const resp = await fetch('/api/push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -156,7 +178,11 @@ async function pushToFrame(imageId) {
   }
 }
 
+let uploadSetup = false;
 function setupUpload() {
+  if (uploadSetup) return;
+  uploadSetup = true;
+
   const zone = document.getElementById('upload-zone');
   const input = document.getElementById('file-input');
 
@@ -187,7 +213,7 @@ async function uploadFiles(files) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const resp = await apiFetch('/api/images', { method: 'POST', body: fd });
+      const resp = await fetch('/api/images', { method: 'POST', body: fd });
       if (resp.status === 201) {
         el.textContent = `✓ ${file.name}`;
         el.classList.add('ok');

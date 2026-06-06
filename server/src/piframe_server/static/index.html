@@ -8,20 +8,27 @@
 </head>
 <body>
 
+<div id="login-overlay" class="login-overlay">
+  <div class="login-card">
+    <h2>pi-frame</h2>
+    <form onsubmit="login(event)">
+      <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+      <button type="submit" class="btn btn-primary">Sign in</button>
+      <p id="login-error" class="login-error"></p>
+    </form>
+  </div>
+</div>
+
 <header>
   <div class="header-left">
     <h1>pi-frame</h1>
     <div id="dot" class="dot offline" title="API connection status"></div>
   </div>
-  <form class="key-form" onsubmit="connectWithKey(event)">
-    <label for="key-input">API key</label>
-    <input type="password" id="key-input" placeholder="Enter key…" autocomplete="current-password">
-    <button type="submit" class="btn btn-primary">Connect</button>
-  </form>
+  <button id="logout-btn" class="btn btn-neutral" onclick="logout()" style="display:none">Sign out</button>
 </header>
 
 <main>
-  <div id="upload-zone" class="upload-zone">
+  <div id="upload-zone" class="upload-zone" style="display:none">
     <p>Drop images here or <span class="browse" id="browse-trigger">browse files</span></p>
     <p style="font-size:0.75rem;margin-top:0.25rem">JPEG, PNG, WebP, GIF accepted</p>
   </div>
@@ -30,15 +37,13 @@
   <div id="progress" class="upload-progress"></div>
 
   <div class="toolbar">
-    <button class="btn btn-push" id="push-daily-btn" onclick="pushToFrame(null)">
+    <button class="btn btn-push" id="push-daily-btn" onclick="pushToFrame(null)" style="display:none">
       Push today's image to frame
     </button>
     <span class="toolbar-right" id="img-count"></span>
   </div>
 
-  <div class="gallery" id="gallery">
-    <div class="empty"><p>Enter your API key above to get started.</p></div>
-  </div>
+  <div class="gallery" id="gallery"></div>
 </main>
 
 <div id="toast-container"></div>

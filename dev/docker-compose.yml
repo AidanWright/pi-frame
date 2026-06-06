@@ -7,6 +7,8 @@ services:
       - "8000:8000"
     environment:
       PIFRAME_API_KEY: dev-key
+      PIFRAME_ADMIN_PASSWORD: dev-admin
+      PIFRAME_USER_PASSWORD: dev-user
       STORAGE_PATH: /data/images
       DATABASE_URL: sqlite:////data/piframe.db
       TAILSCALE_TAILNET: ""  # leave empty to disable push in dev

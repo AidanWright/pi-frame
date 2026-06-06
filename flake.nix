@@ -53,12 +53,18 @@
             qemu
           ];
           shellHook = ''
+            export PYTHONPATH="$PWD/server/src:$PWD/pi/src''${PYTHONPATH:+:$PYTHONPATH}"
+            export DATABASE_URL="''${DATABASE_URL:-sqlite:///$PWD/dev/data/piframe.db}"
+            export STORAGE_PATH="''${STORAGE_PATH:-$PWD/dev/data/images}"
+            export PIFRAME_API_KEY="''${PIFRAME_API_KEY:-dev-key}"
+            export PIFRAME_ADMIN_PASSWORD="''${PIFRAME_ADMIN_PASSWORD:-dev-admin}"
+            export PIFRAME_USER_PASSWORD="''${PIFRAME_USER_PASSWORD:-dev-user}"
             echo "pi-frame dev shell"
-            echo "  Build SD image: nix build .#pi-sd-image  (requires x86_64-linux)"
-            echo "  Run server:     cd server && uvicorn piframe_server.main:app --reload"
-            echo "  Run pi tests:   cd pi && pytest"
+            echo "  Build SD image:   nix build .#pi-sd-image  (requires x86_64-linux)"
+            echo "  Run server:       uvicorn piframe_server.main:app --reload"
+            echo "  Run pi tests:     cd pi && pytest"
             echo "  Run server tests: cd server && pytest"
-            echo "  QEMU test:      bash dev/qemu-test.sh  (Linux only)"
+            echo "  QEMU test:        bash dev/qemu-test.sh  (Linux only)"
           '';
         };
 
