@@ -40,7 +40,10 @@ jobs:
         run: nix build .#pi-sd-image
 
       - name: Stage image file
-        run: cp result/sd-image/*.img.zst pi-frame.img.zst
+        run: |
+          img=$(find result/ -name "*.img.zst" | head -1)
+          echo "Found image: $img"
+          cp "$img" pi-frame.img.zst
 
       - uses: actions/upload-artifact@v4
         with:
