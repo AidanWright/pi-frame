@@ -1,0 +1,15 @@
+services:
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      PIFRAME_API_KEY: dev-key
+      STORAGE_PATH: /data/images
+      DATABASE_URL: sqlite:////data/piframe.db
+      TAILSCALE_TAILNET: ""  # leave empty to disable push in dev
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

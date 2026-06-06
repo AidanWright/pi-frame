@@ -1,0 +1,5 @@
+{
+  "server_url": "https://piframe.example.com",
+  "api_key": "your-api-key-here",
+  "tailscale_authkey": "tskey-auth-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}

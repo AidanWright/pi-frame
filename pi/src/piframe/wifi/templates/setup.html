@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pi-frame WiFi Setup</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4rem; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    select, input[type=text], input[type=password] { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 10px 24px; font-size: 1rem; cursor: pointer; }
+    .success { color: green; font-weight: bold; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>pi-frame WiFi Setup</h1>
+
+  {% if saved %}
+    <p class="success">Credentials saved! The frame will now try to connect.</p>
+  {% else %}
+    <form method="POST" action="/save">
+      <label for="ssid">Network (SSID)</label>
+      {% if ssids %}
+        <select name="ssid" id="ssid">
+          {% for ssid in ssids %}
+            <option value="{{ ssid }}">{{ ssid }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="text" name="ssid" id="ssid" placeholder="Enter network name">
+      {% endif %}
+
+      <label for="psk">Password</label>
+      <input type="password" name="psk" id="psk" placeholder="Leave blank for open networks">
+
+      <button type="submit">Connect</button>
+    </form>
+  {% endif %}
+</body>
+</html>
