@@ -49,8 +49,6 @@
             # Utilities
             jq
             curl
-          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
-            # Linux-only: QEMU for Pi emulation
             qemu
           ];
           shellHook = ''
@@ -73,9 +71,10 @@
         packages = {
           piframe-server = piframeServerPkg;
         } // pkgs.lib.optionalAttrs (system == sdBuildSystem) {
-          # SD image and Pi package can only be built on x86_64-linux
+          # SD image, Pi package, and server VM can only be built on x86_64-linux
           pi-sd-image = self.nixosConfigurations.pi-frame.config.system.build.sdImage;
           piframe = piframePkg;
+          piframe-server-vm = self.nixosConfigurations.piframe-server-vm.config.system.build.vm;
         };
 
         # --- CI checks ---
@@ -132,5 +131,15 @@
 
       # --- Server NixOS module (for deploying to the NixOS server) ---
       nixosModules.piframe-server = import ./server/nixos/configuration.nix;
+
+      # --- Server VM for local testing ---
+      nixosConfigurations.piframe-server-vm = nixpkgs.lib.nixosSystem {
+        system = sdBuildSystem;
+        modules = [
+          "${nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
+          self.nixosModules.piframe-server
+          ./dev/vm-server.nix
+        ];
+      };
     };
 }

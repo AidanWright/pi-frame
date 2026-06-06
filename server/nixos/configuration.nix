@@ -37,8 +37,7 @@
           User = "piframe-server";
           Group = "piframe-server";
           ExecStart = lib.concatStringsSep " " [
-            "${pkg}/bin/uvicorn"
-            "piframe_server.main:app"
+            "${pkg}/bin/piframe-server"
             "--host" "0.0.0.0"
             "--port" (toString config.services.piframe-server.port)
           ];
