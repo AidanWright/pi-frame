@@ -41,6 +41,7 @@
     htop
     jq
     curl
+    procps
     piframePkg
   ];
 

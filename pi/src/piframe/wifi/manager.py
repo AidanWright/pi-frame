@@ -21,7 +21,11 @@ CONNECT_TIMEOUT = 30
 
 
 def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, **kwargs)
+    try:
+        return subprocess.run(cmd, **kwargs)
+    except FileNotFoundError:
+        logger.warning("command not found: %s", cmd[0])
+        return subprocess.CompletedProcess(cmd, returncode=127)
 
 
 def scan_visible_ssids() -> dict[str, int]:
