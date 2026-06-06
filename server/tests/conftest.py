@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 os.environ["PIFRAME_API_KEY"] = "test-key"
 os.environ["PIFRAME_ADMIN_PASSWORD"] = "admin-pass"
 os.environ["PIFRAME_USER_PASSWORD"] = "user-pass"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"  # prevents main.py mkdir on import
 os.environ.setdefault("STORAGE_PATH", "")  # will be overridden per-test
 
 

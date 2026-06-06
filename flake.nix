@@ -107,6 +107,8 @@
             ];
             PYTHONPATH = "${./server}/src";
           } ''
+            export DATABASE_URL="sqlite:///$TMPDIR/test.db"
+            export STORAGE_PATH="$TMPDIR/images"
             cd ${./server}
             python -m pytest tests/ -q
             touch $out
