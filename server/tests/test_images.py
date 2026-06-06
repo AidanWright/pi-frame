@@ -29,7 +29,7 @@ def test_upload_returns_201(client):
     assert r.status_code == 201
     body = r.json()
     assert body["original_name"] == "photo.jpg"
-    assert body["mime_type"] == "image/jpeg"
+    assert body["mime_type"] == "image/png"
 
 
 def test_upload_invalid_file(client):

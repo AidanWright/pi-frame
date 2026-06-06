@@ -4,9 +4,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-os.environ.setdefault("PIFRAME_API_KEY", "test-key")
-os.environ.setdefault("PIFRAME_ADMIN_PASSWORD", "admin-pass")
-os.environ.setdefault("PIFRAME_USER_PASSWORD", "user-pass")
+# Force test values regardless of any environment the test runner inherits.
+os.environ["PIFRAME_API_KEY"] = "test-key"
+os.environ["PIFRAME_ADMIN_PASSWORD"] = "admin-pass"
+os.environ["PIFRAME_USER_PASSWORD"] = "user-pass"
 os.environ.setdefault("STORAGE_PATH", "")  # will be overridden per-test
 
 

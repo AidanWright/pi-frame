@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+      - run: nix flake check
+
+  sd-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            extra-platforms = aarch64-linux
+
+      - name: Build SD image
+        run: nix build .#pi-sd-image
+
+      - name: Stage image file
+        run: cp result/sd-image/*.img.zst pi-frame.img.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-frame-sd-image
+          path: pi-frame.img.zst
+          retention-days: 30

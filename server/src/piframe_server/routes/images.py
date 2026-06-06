@@ -1,6 +1,5 @@
 import hashlib
 import io
-import mimetypes
 import os
 from datetime import date
 from typing import Optional
@@ -12,6 +11,7 @@ from PIL import Image as PilImage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from piframe_server.acep import convert as acep_convert, to_png_bytes
 from piframe_server.auth import require_admin, require_auth
 from piframe_server.models import Image, ImageOut, PushRequest
 from piframe_server.storage import delete_image, get_image_path, save_upload
@@ -56,17 +56,13 @@ def list_images(db: Session = Depends(get_db)) -> list[ImageOut]:
 def upload_image(file: UploadFile, db: Session = Depends(get_db)) -> ImageOut:
     data = file.file.read()
     try:
-        PilImage.open(io.BytesIO(data)).verify()
+        img = PilImage.open(io.BytesIO(data)).convert("RGB")
     except Exception:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
 
-    mime = file.content_type or "image/jpeg"
-    suffix = mimetypes.guess_extension(mime) or ".jpg"
-    if suffix == ".jpe":
-        suffix = ".jpg"
-
-    filename = save_upload(data, suffix)
-    row = Image(filename=filename, original_name=file.filename or filename, mime_type=mime)
+    png_bytes = to_png_bytes(acep_convert(img))
+    filename = save_upload(png_bytes, ".png")
+    row = Image(filename=filename, original_name=file.filename or filename, mime_type="image/png")
     db.add(row)
     db.commit()
     db.refresh(row)
