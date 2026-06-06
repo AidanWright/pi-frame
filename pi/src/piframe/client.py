@@ -6,9 +6,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = Path(os.environ.get("PIFRAME_CACHE_DIR", "/var/lib/piframe"))
-
-
 def _read_config() -> tuple[str, str]:
     """Return (server_url, api_key) from /etc/piframe/ files."""
     server_url = Path("/etc/piframe/server-url").read_text().strip()
@@ -26,12 +23,12 @@ def fetch_daily_image() -> Path:
         r = client.get(url, headers={"X-API-Key": api_key})
         r.raise_for_status()
 
-    # Determine extension from content-type
     content_type = r.headers.get("content-type", "image/jpeg")
     ext = ".jpg" if "jpeg" in content_type else ".png"
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    dest = CACHE_DIR / f"current{ext}"
+    cache_dir = Path(os.environ.get("PIFRAME_CACHE_DIR", "/var/lib/piframe"))
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    dest = cache_dir / f"current{ext}"
     dest.write_bytes(r.content)
     logger.info("Saved daily image to %s", dest)
     return dest

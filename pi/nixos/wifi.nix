@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, piframePkg, ... }:
 
 # Custom WiFi management: scan → try known networks → AP captive portal fallback.
 # We do NOT use networking.wireless (NixOS module) because its declarative config
@@ -33,7 +33,7 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.python3}/bin/piframe-wifi-manager";
+      ExecStart = "${piframePkg}/bin/piframe-wifi-manager";
       Restart = "on-failure";
       StandardOutput = "journal";
       StandardError = "journal";

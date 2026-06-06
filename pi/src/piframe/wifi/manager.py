@@ -164,7 +164,8 @@ def enable_ap_mode() -> None:
     _run(["ip", "addr", "add", f"{AP_IP}/24", "dev", "wlan0"], capture_output=True)
     _run(["ip", "link", "set", "wlan0", "up"], capture_output=True)
 
-    conf_path = "/tmp/piframe-hostapd.conf"
+    with tempfile.NamedTemporaryFile(suffix="-hostapd.conf", delete=False, mode="w") as f:
+        conf_path = f.name
     _write_hostapd_conf(conf_path)
     _hostapd_proc = subprocess.Popen(
         ["hostapd", conf_path],

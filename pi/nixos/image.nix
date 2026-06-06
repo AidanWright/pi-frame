@@ -1,10 +1,8 @@
 { pkgs, lib, ... }:
 
 {
-  sdImage = {
-    imageName = "pi-frame.img";
-    compressImage = false;
-  };
+  sdImage.compressImage = false;
+  image.fileName = "pi-frame.img";
 
   # On first boot, read secrets from the FAT boot partition and write them to /etc/piframe/
   # The user copies piframe-config.json to the SD card's boot partition before inserting it.

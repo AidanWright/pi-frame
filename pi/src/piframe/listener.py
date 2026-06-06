@@ -75,6 +75,16 @@ def create_listener_app(refresh_fn: Callable) -> Flask:
     return app
 
 
+def run() -> None:
+    """Entry point for the piframe-listener systemd service."""
+    import time
+    from piframe.main import refresh
+
+    start_listener(refresh_fn=refresh)
+    while True:
+        time.sleep(3600)
+
+
 def start_listener(refresh_fn: Callable, port: int = 8080) -> threading.Thread:
     """Start the listener Flask app in a daemon thread and return the thread."""
     app = create_listener_app(refresh_fn)

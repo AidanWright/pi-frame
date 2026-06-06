@@ -4,120 +4,123 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    nixos-hardware.url = "github:NixOS/nixos-hardware";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, nixos-hardware }:
     let
-      # Build host is x86_64; target is aarch64 (Pi Zero 2W)
-      buildSystem = "x86_64-linux";
+      # SD image cross-compilation must run on x86_64-linux (needs Linux binfmt)
+      sdBuildSystem = "x86_64-linux";
       piSystem = "aarch64-linux";
 
-      # nixpkgs for the build host
-      pkgsBuild = nixpkgs.legacyPackages.${buildSystem};
-
-      # Cross-compilation pkgs: build on x86_64, target aarch64
-      pkgsCross = nixpkgs.legacyPackages.${buildSystem}.pkgsCross.aarch64-multiplatform;
-
-      # Pi Python package built for aarch64
+      # piframePkg (aarch64-linux) is always cross-compiled from x86_64-linux
+      pkgsSdBuild = nixpkgs.legacyPackages.${sdBuildSystem};
+      pkgsCross = pkgsSdBuild.pkgsCross.aarch64-multiplatform;
       piframePkg = pkgsCross.callPackage ./pi/default.nix { pkgs = pkgsCross; };
 
-      # Server Python package built natively
-      piframeServerPkg = pkgsBuild.callPackage ./server/default.nix { pkgs = pkgsBuild; };
-
     in
-    {
-      # --- Pi SD card image ---
+    # Per-system outputs: devShell, server package, and tests work on any developer machine
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        piframeServerPkg = pkgs.callPackage ./server/default.nix { pkgs = pkgs; };
+      in
+      {
+        # --- Development shell ---
+        devShells.default = pkgs.mkShell {
+          name = "pi-frame-dev";
+          buildInputs = with pkgs; [
+            # Python dev
+            python312
+            python312Packages.pip
+            python312Packages.pytest
+            python312Packages.pillow
+            python312Packages.flask
+            python312Packages.httpx
+            python312Packages.fastapi
+            python312Packages.uvicorn
+            python312Packages.sqlalchemy
+            python312Packages.python-multipart
+            # Nix tooling
+            nil
+            nixpkgs-fmt
+            # Utilities
+            jq
+            curl
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            # Linux-only: QEMU for Pi emulation
+            qemu
+          ];
+          shellHook = ''
+            echo "pi-frame dev shell"
+            echo "  Build SD image: nix build .#pi-sd-image  (requires x86_64-linux)"
+            echo "  Run server:     cd server && uvicorn piframe_server.main:app --reload"
+            echo "  Run pi tests:   cd pi && pytest"
+            echo "  Run server tests: cd server && pytest"
+            echo "  QEMU test:      bash dev/qemu-test.sh  (Linux only)"
+          '';
+        };
+
+        # --- Packages ---
+        packages = {
+          piframe-server = piframeServerPkg;
+        } // pkgs.lib.optionalAttrs (system == sdBuildSystem) {
+          # SD image and Pi package can only be built on x86_64-linux
+          pi-sd-image = self.nixosConfigurations.pi-frame.config.system.build.sdImage;
+          piframe = piframePkg;
+        };
+
+        # --- CI checks ---
+        checks = {
+          pi-tests = pkgs.runCommand "pi-tests" {
+            buildInputs = with pkgs; [
+              python312
+              python312Packages.pytest
+              python312Packages.pillow
+              python312Packages.flask
+              python312Packages.httpx
+              python312Packages.qrcode
+            ];
+            PYTHONPATH = "${./pi}/src";
+          } ''
+            cd ${./pi}
+            python -m pytest tests/ -q
+            touch $out
+          '';
+          server-tests = pkgs.runCommand "server-tests" {
+            buildInputs = with pkgs; [
+              python312
+              python312Packages.pytest
+              python312Packages.fastapi
+              python312Packages.httpx
+              python312Packages.sqlalchemy
+              python312Packages.python-multipart
+              python312Packages.pillow
+              python312Packages.uvicorn
+            ];
+            PYTHONPATH = "${./server}/src";
+          } ''
+            cd ${./server}
+            python -m pytest tests/ -q
+            touch $out
+          '';
+        };
+      }
+    ) // {
+      # --- Pi SD card image (cross-compiled on x86_64-linux) ---
       nixosConfigurations.pi-frame = nixpkgs.lib.nixosSystem {
-        system = piSystem;
-        # Tell nixpkgs to cross-compile from x86_64
-        pkgs = pkgsCross;
         specialArgs = { inherit piframePkg; };
         modules = [
+          nixos-hardware.nixosModules.raspberry-pi-3
           ./pi/nixos/configuration.nix
           {
-            # Cross-compilation: build on x86_64
-            nixpkgs.buildPlatform = buildSystem;
+            nixpkgs.buildPlatform = sdBuildSystem;
             nixpkgs.hostPlatform = piSystem;
           }
         ];
       };
 
-      # Expose SD image as a top-level package for easy building
-      packages.${buildSystem} = {
-        pi-sd-image = self.nixosConfigurations.pi-frame.config.system.build.sdImage;
-        piframe = piframePkg;
-        piframe-server = piframeServerPkg;
-      };
-
       # --- Server NixOS module (for deploying to the NixOS server) ---
       nixosModules.piframe-server = import ./server/nixos/configuration.nix;
-
-      # --- Development shell ---
-      devShells.${buildSystem}.default = pkgsBuild.mkShell {
-        name = "pi-frame-dev";
-        buildInputs = with pkgsBuild; [
-          # Python dev
-          python311
-          python311Packages.pip
-          python311Packages.pytest
-          python311Packages.pillow
-          python311Packages.flask
-          python311Packages.httpx
-          python311Packages.fastapi
-          python311Packages.uvicorn
-          python311Packages.sqlalchemy
-          python311Packages.python-multipart
-          # Nix tooling
-          nil
-          nixpkgs-fmt
-          # Emulation
-          qemu
-          # Utilities
-          jq
-          curl
-        ];
-        shellHook = ''
-          echo "pi-frame dev shell"
-          echo "  Build SD image: nix build .#pi-sd-image"
-          echo "  Run server:     cd server && uvicorn piframe_server.main:app --reload"
-          echo "  Run pi tests:   cd pi && pytest"
-          echo "  Run server tests: cd server && pytest"
-          echo "  QEMU test:      bash dev/qemu-test.sh"
-        '';
-      };
-
-      # Allow 'nix flake check' to validate configs
-      checks.${buildSystem} = {
-        pi-tests = pkgsBuild.runCommand "pi-tests" {
-          buildInputs = with pkgsBuild; [
-            python311
-            python311Packages.pytest
-            python311Packages.pillow
-            python311Packages.flask
-            python311Packages.httpx
-            python311Packages.qrcode
-          ];
-        } ''
-          cd ${./pi}
-          python -m pytest tests/ -q
-          touch $out
-        '';
-        server-tests = pkgsBuild.runCommand "server-tests" {
-          buildInputs = with pkgsBuild; [
-            python311
-            python311Packages.pytest
-            python311Packages.fastapi
-            python311Packages.httpx
-            python311Packages.sqlalchemy
-            python311Packages.python-multipart
-            python311Packages.pillow
-            python311Packages.uvicorn
-          ];
-        } ''
-          cd ${./server}
-          python -m pytest tests/ -q
-          touch $out
-        '';
-      };
     };
 }

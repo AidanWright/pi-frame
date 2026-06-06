@@ -22,6 +22,7 @@ test = [
 [project.scripts]
 piframe-main = "piframe.main:main"
 piframe-wifi-manager = "piframe.wifi.manager:run"
+piframe-listener = "piframe.listener:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/piframe"]

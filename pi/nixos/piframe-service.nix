@@ -38,7 +38,7 @@
       Type = "simple";
       User = "piframe";
       Group = "piframe";
-      ExecStart = "${pkgs.python3}/bin/python3 -c 'from piframe.listener import start_listener; from piframe.main import refresh; import time; start_listener(refresh); time.sleep(1e9)'";
+      ExecStart = "${piframePkg}/bin/piframe-listener";
       Restart = "on-failure";
       RestartSec = "5s";
       StandardOutput = "journal";

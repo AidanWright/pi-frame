@@ -1,10 +1,10 @@
-{ config, pkgs, lib, piframePkg, ... }:
+{ config, pkgs, lib, piframePkg, modulesPath, ... }:
 
 # piframePkg is passed via flake specialArgs (the built Python package)
 
 {
   imports = [
-    "${pkgs.path}/nixos/modules/installer/sd-card/sd-image-aarch64.nix"
+    "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
     ./hardware.nix
     ./wifi.nix
     ./tailscale.nix

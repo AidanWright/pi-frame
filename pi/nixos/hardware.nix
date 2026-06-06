@@ -1,13 +1,13 @@
 { pkgs, lib, ... }:
 
 {
-  # RPi Foundation kernel tuned for BCM2837 (same silicon as Pi 3)
-  boot.kernelPackages = pkgs.linuxPackages_rpi02w;
+  # Not using ZFS; silence the forceImportRoot default-value warning
+  boot.zfs.forceImportRoot = false;
 
-  # Maximize usable RAM: minimal GPU allocation, ZRAM swap
-  sdImage.extraFirmwareConfig = {
-    gpu_mem = 16;
-  };
+  # Minimize GPU memory allocation (16 MB)
+  sdImage.populateFirmwareCommands = lib.mkAfter ''
+    echo "gpu_mem=16" >> firmware/config.txt
+  '';
   zramSwap = {
     enable = true;
     algorithm = "zstd";
